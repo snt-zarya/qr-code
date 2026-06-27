@@ -43,6 +43,18 @@ const EXAMPLE = {
   Purpose: 'Оплата по счёту № 12 от 27.06.2026. Без НДС.',
 }
 
+// Дополнительные поля примера для бюджетного платежа (налоги/ЖКХ).
+const EXAMPLE_BUDGET = {
+  Sum: '12500.00',
+  Purpose: 'Уплата НДС за 2 квартал 2026 г.',
+  DrawerStatus: '01',
+  CBC: '18210301000011000110',
+  OKTMO: '45382000',
+  PaytReason: 'ТП',
+  TaxPeriod: 'КВ.02.2026',
+  DocNo: '0',
+}
+
 const SAVED = loadState()
 
 export default function App() {
@@ -183,7 +195,7 @@ export default function App() {
               className="px-4 py-2.5 rounded-lg border border-line bg-transparent hover:border-slate-500 font-semibold transition">
               Очистить
             </button>
-            <button onClick={() => setValues(EXAMPLE)}
+            <button onClick={() => setValues(mode === 'budget' ? { ...EXAMPLE, ...EXAMPLE_BUDGET } : EXAMPLE)}
               className="px-4 py-2.5 rounded-lg border border-line bg-transparent hover:border-slate-500 font-semibold transition">
               Пример
             </button>
