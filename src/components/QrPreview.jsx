@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import QRCode from 'qrcode'
+import { reachGoal } from '../lib/metrika.js'
 
 // UTF-8 байтовый режim qrcode выбирает автоматически для кириллицы.
 const QR_OPTS = { errorCorrectionLevel: 'M', margin: 2 }
@@ -31,11 +32,13 @@ export default function QrPreview({ payload, ready, error }) {
     if (!payload) return
     const url = await QRCode.toDataURL(payload, { ...QR_OPTS, scale: 10, margin: 4 })
     triggerDownload('payment-qr.png', url)
+    reachGoal('download_png')
   }
 
   const downloadSvg = async () => {
     const s = await QRCode.toString(payload, { type: 'svg', ...QR_OPTS })
     triggerDownload('payment-qr.svg', 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(s))
+    reachGoal('download_svg')
   }
 
   const status = !ready

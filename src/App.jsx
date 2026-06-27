@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Field from './components/Field.jsx'
 import QrPreview from './components/QrPreview.jsx'
 import { buildPayload, validate, isReady } from './lib/payment.js'
 import { lookupBank } from './lib/banks.js'
+import { reachGoal } from './lib/metrika.js'
 
 const EMPTY = {
   Name: '', PayeeINN: '', KPP: '', PersonalAcc: '', BankName: '', BIC: '',
@@ -80,6 +81,13 @@ export default function App() {
   const ready = useMemo(() => isReady(values, errors, mode), [values, errors, mode])
   const payload = useMemo(() => (ready ? buildPayload(values, mode) : ''), [values, mode, ready])
 
+  // Цель «QR сформирован» — один раз при переходе формы в готовое состояние.
+  const wasReady = useRef(false)
+  useEffect(() => {
+    if (ready && !wasReady.current) reachGoal('qr_ready')
+    wasReady.current = ready
+  }, [ready])
+
   const firstError = Object.values(errors).find((s) => s?.error)?.error
 
   const set = (e) => {
@@ -94,6 +102,7 @@ export default function App() {
   const copyPayload = async () => {
     if (!payload) return
     try { await navigator.clipboard.writeText(payload) } catch { /* noop */ }
+    reachGoal('copy_string')
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
   }
