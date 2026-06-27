@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Field from './components/Field.jsx'
 import QrPreview from './components/QrPreview.jsx'
 import { buildPayload, validate, isReady } from './lib/payment.js'
+import { lookupBank } from './lib/banks.js'
 
 const EMPTY = {
   Name: '', PayeeINN: '', KPP: '', PersonalAcc: '', BankName: '', BIC: '',
@@ -47,6 +48,7 @@ export default function App() {
   const [values, setValues] = useState(SAVED?.values ?? EMPTY)
   const [mode, setMode] = useState(SAVED?.mode ?? 'standard') // 'standard' | 'budget'
   const [copied, setCopied] = useState(false)
+  const [bank, setBank] = useState(null) // результат поиска по БИК: {found, name} | null
 
   // Автосохранение формы и режима в localStorage.
   useEffect(() => {
@@ -54,6 +56,25 @@ export default function App() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ values, mode }))
     } catch { /* localStorage недоступен (приватный режим) — молча пропускаем */ }
   }, [values, mode])
+
+  // Автоподстановка банка и корр. счёта по БИК из справочника ЦБ РФ.
+  useEffect(() => {
+    const bic = (values.BIC || '').trim()
+    if (!/^\d{9}$/.test(bic)) { setBank(null); return }
+    let cancelled = false
+    lookupBank(bic)
+      .then((rec) => {
+        if (cancelled) return
+        if (!rec) { setBank({ found: false }); return }
+        setBank({ found: true, name: rec.name })
+        setValues((v) =>
+          v.BankName === rec.name && v.CorrespAcc === rec.corr
+            ? v
+            : { ...v, BankName: rec.name, CorrespAcc: rec.corr })
+      })
+      .catch(() => { if (!cancelled) setBank(null) })
+    return () => { cancelled = true }
+  }, [values.BIC])
 
   const errors = useMemo(() => validate(values, mode), [values, mode])
   const ready = useMemo(() => isReady(values, errors, mode), [values, errors, mode])
@@ -113,12 +134,13 @@ export default function App() {
           <Section title="Банковские реквизиты">
             <Field full label="Расчётный счёт получателя" required
               {...f('PersonalAcc', { maxLength: 20, inputMode: 'numeric' })} placeholder="20 цифр" />
-            <Field full label="Наименование банка" required
-              {...f('BankName', { maxLength: 160 })} placeholder="ПАО Сбербанк" />
             <Field label="БИК" required {...f('BIC', { maxLength: 9, inputMode: 'numeric' })}
-              placeholder="9 цифр" />
+              placeholder="9 цифр"
+              hint={bank?.found ? `✓ ${bank.name}` : bank ? 'Банк не найден в справочнике' : 'Банк и корр. счёт подставятся автоматически'} />
             <Field label="Корр. счёт" required
               {...f('CorrespAcc', { maxLength: 20, inputMode: 'numeric' })} placeholder="20 цифр" />
+            <Field full label="Наименование банка" required
+              {...f('BankName', { maxLength: 160 })} placeholder="ПАО Сбербанк" />
           </Section>
 
           <Section title="Платёж">
